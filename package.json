@@ -1,0 +1,42 @@
+{
+  "name": "sms-delivery-example",
+  "version": "0.0.0",
+  "description": "Example application using onramp technology to send direct messages",
+  "main": "index.js",
+  "dependencies": {
+    "browser-relay-client": "git://github.com/overelay/browser-relay-client#v0.1.7",
+    "browserify-middleware": "^4.1.0",
+    "express": "^4.10.4",
+    "react": "^0.12.1",
+    "typed-react": "^3.2.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.10",
+    "gulp-chug": "^0.3.1",
+    "gulp-rimraf": "^0.1.1",
+    "gulp-typescript": "^2.3.0",
+    "npm": "^2.1.10",
+    "npm-git-update": "^1.1.0",
+    "resolve": "^1.0.0",
+    "run-sequence": "^1.0.2",
+    "semver-extra": "^2.0.0"
+  },
+  "scripts": {
+    "start": "node ./lib/server -h 127.0.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/overelay/sms-delivery-example.git"
+  },
+  "private": true,
+  "keywords": [
+    "onramp",
+    "p2p"
+  ],
+  "author": "evgenus",
+  "license": "LGPLv3",
+  "bugs": {
+    "url": "https://github.com/overelay/sms-delivery-example/issues"
+  },
+  "homepage": "https://github.com/overelay/sms-delivery-example"
+}
