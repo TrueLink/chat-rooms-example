@@ -7,14 +7,18 @@ import hub = require("browser-relay-client/lib/hub");
 var RD = react.DOM;
 
 export interface AppProps {
+    hub: hub.HubAPI
+    ramps?: string[];
 }
 
 interface AppState {
+    currentRamps?: string[];
 }
 
 class AppClass extends TypedReact.Component<AppProps, AppState> {
     getInitialState(): AppState {
         return {
+            currentRamps: this.props.ramps,
         };
     }
 
