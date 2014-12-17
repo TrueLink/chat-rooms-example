@@ -26,6 +26,10 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
         };
     }
 
+    private _messageReceived(message: string): void {
+        alert(JSON.stringify(message));
+    }
+
     private _addRamp(event: React.FormEvent) {
         var hub = this.props.hub;
         var form = <HTMLFormElement>event.target;
@@ -62,13 +66,26 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
         });
     }
 
+    private _sendMessage(event: React.FormEvent) {
+        var hub = this.props.hub;
+        var form = <HTMLFormElement>event.target;
+        var message = <HTMLInputElement>form.elements.item("message");
+
+        hub.sendAll(this.state.contacts, message.value);
+        message.value = message.defaultValue;
+        event.preventDefault();
+        return false;
+    }
+
     componentDidMount() {
         var hub = this.props.hub;
+        hub.onMessage.on(this._messageReceived, this);
         hub.onRoutingChanged.on(this._routingChanged, this);
     }
 
     componentWillUnmount() {
         var hub = this.props.hub;
+        hub.onMessage.off(this._messageReceived, this);
         hub.onRoutingChanged.off(this._routingChanged, this);
     }
 
@@ -78,6 +95,19 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
             RD.h1(null, "GUID: ", RD.span({
                 className: "guid"
             }, hub.guid)),
+            RD.form({
+                onSubmit: this._sendMessage,
+                className: "submit-form"
+            },
+                RD.input({
+                    type: "text",
+                    name: "message"
+                }),
+                RD.input({
+                    type: "submit",
+                    value: "Send"
+                })
+            ),
             RD.h2(null, "Ramp servers"),
             this.state.currentRamps.map((addr) => {
                 return rampConnection.RampConnection({
