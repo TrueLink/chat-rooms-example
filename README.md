@@ -1,4 +1,4 @@
 chat-rooms-example
 ====================
 
-Example application using onramp technology to broadcast messages and organize rooms 
+Example application that uses onramp to broadcast messages grouped by rooms
