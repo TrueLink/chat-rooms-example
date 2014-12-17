@@ -3,9 +3,54 @@ import TypedReact = require("typed-react");
 import uuid = require("node-uuid");
 import client = require("browser-relay-client");
 import routing = require("browser-relay-client/lib/routing");
+import event = require("browser-relay-client/lib/event");
 import hub = require("browser-relay-client/lib/hub");
 import rampConnection = require("./ramp-connection");
 var RD = react.DOM;
+
+interface ChatMessage {
+    user: string;
+    replic: string;
+}
+
+class RoomModel {
+    public onEnterRoom: event.Event<boolean> = new event.Event<boolean>();
+    public onLeaveRoom: event.Event<boolean> = new event.Event<boolean>();
+    public onPost: event.Event<string> = new event.Event<string>();
+    public onChange: event.Event<boolean> = new event.Event<boolean>();
+
+    public get id(): string {
+        return this._id;
+    }
+
+    private _messages: ChatMessage[] = [];
+    private _users: string[] = [];
+    private _id: string = uuid.v4();
+
+    public userEntered(user: string): void {
+        var index = this._users.indexOf(user);
+        if (index >= 0) return;
+        this._users.push(user);
+        this.onChange.emit(false);
+    }
+
+    public userLeft(user: string): void {
+        var index = this._users.indexOf(user);
+        if (index == -1) return;
+        this._users.splice(index, 1);
+        this.onChange.emit(false);
+    }
+
+    public posted(user: string, replic: string): void {
+        var index = this._users.indexOf(user);
+        if (index == -1) return;
+        this._messages.push({
+            user: user,
+            replic: replic
+        });
+        this.onChange.emit(false);
+    }
+}
 
 export interface AppProps {
     hub: hub.HubAPI
@@ -16,18 +61,51 @@ interface AppState {
     currentRamps?: string[];
     contacts?: string[];
     routing?: string[][];
+    rooms?: RoomModel[];
+    activeRoom?: string;
+
 }
 
 class AppClass extends TypedReact.Component<AppProps, AppState> {
     getInitialState(): AppState {
         return {
             currentRamps: this.props.ramps,
-            routing: []
+            contacts: [],
+            routing: [],
+            rooms: []
         };
     }
 
-    private _messageReceived(message: string): void {
-        alert(JSON.stringify(message));
+    private _getRoomById(id: string): RoomModel {
+        for (var i = 0; i < this.state.rooms.length; i++) {
+            var room = this.state.rooms[i];
+            if (room.id == id) return room;
+        }
+        return null;
+    }
+
+    private _messageReceived(message: any): void {
+        var messageType: string = message.type;
+        switch (messageType) {
+            case "create-room":
+                var roomId: string = message.id;
+                var roomName: string = message.name;
+                break;
+            case "enter-room":
+                var roomId: string = message.room;
+                var userId: string = message.user;
+                break;
+            case "leave-room":
+                var roomId: string = message.room;
+                var userId: string = message.user;
+                break;
+            case "post-message":
+                var roomId: string = message.room;
+                var userId: string = message.user;
+                var replic: string = message.replic;
+
+                break;
+        }
     }
 
     private _addRamp(event: React.FormEvent) {
