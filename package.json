@@ -1,5 +1,5 @@
 {
-  "name": "sms-delivery-example",
+  "name": "chat-rooms-example",
   "version": "0.0.0",
   "description": "Example application using onramp technology to send direct messages",
   "main": "index.js",
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/overelay/sms-delivery-example.git"
+    "url": "https://github.com/overelay/chat-rooms-example.git"
   },
   "private": true,
   "keywords": [
@@ -37,7 +37,7 @@
   "author": "evgenus",
   "license": "LGPLv3",
   "bugs": {
-    "url": "https://github.com/overelay/sms-delivery-example/issues"
+    "url": "https://github.com/overelay/chat-rooms-example/issues"
   },
-  "homepage": "https://github.com/overelay/sms-delivery-example"
+  "homepage": "https://github.com/overelay/chat-rooms-example"
 }

@@ -26,6 +26,8 @@
     <Content Include="README.md" />
     <Compile Include="gulpfile.js" />
     <TypeScriptCompile Include="src\app.ts" />
+    <TypeScriptCompile Include="src\ramp-connection.ts" />
+    <TypeScriptCompile Include="src\room-model.ts" />
     <TypeScriptCompile Include="src\server.ts" />
     <TypeScriptCompile Include="typings\tsd.d.ts" />
     <TypeScriptCompile Include="typings\node\node.d.ts" />
