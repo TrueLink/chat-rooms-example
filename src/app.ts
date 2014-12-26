@@ -8,11 +8,13 @@ import rampConnection = require("./ramp-connection");
 import roomModel = require("./room-model");
 import roomsItem = require("./rooms-item");
 import chat = require("./chat");
+import protocol = require("./chat-protocol");
 var RD = react.DOM;
 
 export interface AppProps {
-    hub: hub.HubAPI
+    hub: hub.HubAPI;
     ramps?: string[];
+    protocol: protocol.Protocol;
 }
 
 interface AppState {
@@ -24,7 +26,7 @@ interface AppState {
     participatedRooms?: roomModel.RoomModel[];
 }
 
-class AppClass extends TypedReact.Component<AppProps, AppState> {
+class AppClass extends TypedReact.Component<AppProps, AppState> implements protocol.Callbacks {
     getInitialState(): AppState {
         return {
             currentRamps: this.props.ramps,
@@ -41,44 +43,6 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
             if (room.id == id) return room;
         }
         return null;
-    }
-
-    private _messageReceived(message: any): void {
-        var messageType: string = message.type;
-        switch (messageType) {
-            case "create-room":
-                var roomId: string = message.id;
-                var name: string = message.name;
-                var room = new roomModel.RoomModel({
-                    id: roomId,
-                    name: name
-                });
-                var rooms = this.state.rooms;
-                rooms.push(room);
-                this.setState({
-                    rooms: rooms
-                });
-                break;
-            case "enter-room":
-                var roomId: string = message.room;
-                var userId: string = message.user;
-                var room = this._getRoomById(roomId);
-                room.userEntered(userId);
-                break;
-            case "leave-room":
-                var roomId: string = message.room;
-                var userId: string = message.user;
-                var room = this._getRoomById(roomId);
-                room.userLeft(userId);
-                break;
-            case "post-message":
-                var roomId: string = message.room;
-                var userId: string = message.user;
-                var replica: string = message.replica;
-                var room = this._getRoomById(roomId);
-                room.posted(userId, replica);
-                break;
-        }
     }
 
     private _addRamp(event: React.FormEvent) {
@@ -127,13 +91,10 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
 
         var activeRoom = this._getRoomById(this.state.activeRoom);
         activeRoom.posted(hub.guid, message.value);
+        var allUsersInRoomExceptMe = activeRoom.users.filter((user) => { return user != hub.guid; });
 
-        hub.sendAll(activeRoom.users.filter((user) => { return user != hub.guid; }), {
-            type: "post-message",
-            room: activeRoom.id,
-            user: hub.guid,
-            replica: message.value
-        });
+        this.props.protocol.writePostReplica(allUsersInRoomExceptMe, activeRoom.id, hub.guid, message.value);
+
         message.value = message.defaultValue;
         return false;
     }
@@ -156,14 +117,9 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
             rooms: rooms
         });
 
-        hub.sendAll(this.state.contacts, {
-            type: "create-room",
-            id: room.id,
-            name: room.name
-        });
+        this.props.protocol.writeCreateRoom(this.state.contacts, room.id, name.value);
 
         name.value = name.defaultValue;
-
         return false;
     }
 
@@ -176,11 +132,7 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
             })
         });
 
-        hub.sendAll(this.state.contacts, {
-            type: "enter-room",
-            room: room.id,
-            user: hub.guid
-        });
+        this.props.protocol.writeEnterRoom(this.state.contacts, room.id, hub.guid);
     }
 
     private _leaveRoom(room: roomModel.RoomModel) {
@@ -193,11 +145,7 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
             })
         });
 
-        hub.sendAll(this.state.contacts, {
-            type: "leave-room",
-            room: room.id,
-            user: hub.guid
-        });
+        this.props.protocol.writeLeaveRoom(this.state.contacts, room.id, hub.guid);
     }
 
     private _activateRoom(room: roomModel.RoomModel) {
@@ -206,15 +154,48 @@ class AppClass extends TypedReact.Component<AppProps, AppState> {
         });
     }
 
+    writeMessage(destinations: string[], message: any): void {
+        this.props.hub.sendAll(destinations, message);
+    }
+
+    readCreateRoom(roomId: string, name: string): void {
+        var room = new roomModel.RoomModel({
+            id: roomId,
+            name: name
+        });
+        var rooms = this.state.rooms;
+        rooms.push(room);
+        this.setState({
+            rooms: rooms
+        });
+    }
+
+    readEnterRoom(roomId: string, userId: string): void {
+        var room = this._getRoomById(roomId);
+        room.userEntered(userId);
+    }
+
+    readLeaveRoom(roomId: string, userId: string): void {
+        var room = this._getRoomById(roomId);
+        room.userLeft(userId);
+    }
+
+    readPostReplice(roomId: string, userId: string, replica: string): void {
+        var room = this._getRoomById(roomId);
+        room.posted(userId, replica);
+    }
+
     componentDidMount() {
         var hub = this.props.hub;
-        hub.onMessage.on(this._messageReceived, this);
+        this.props.protocol.setReactions(this);
+        hub.onMessage.on(this.props.protocol.readMessage, this.props.protocol);
         hub.onRoutingChanged.on(this._routingChanged, this);
     }
 
     componentWillUnmount() {
         var hub = this.props.hub;
-        hub.onMessage.off(this._messageReceived, this);
+        this.props.protocol.setReactions(null);
+        hub.onMessage.off(this.props.protocol.readMessage, this.props.protocol);
         hub.onRoutingChanged.off(this._routingChanged, this);
     }
 
@@ -300,8 +281,10 @@ export var App = react.createFactory(TypedReact.createClass<AppProps, AppState>(
 window.addEventListener("load", function () {
     var guid = uuid.v4();
     var instance = hub.Hub.create(guid);
+    var chatProtocol = new protocol.Protocol();
     var app = App({
         hub: instance,
+        protocol: chatProtocol,
         ramps: [
             "ws://127.0.0.1:20500/",
             "ws://127.0.0.1:20501/"
