@@ -4,7 +4,7 @@
   "description": "Example application using onramp technology to send direct messages",
   "main": "index.js",
   "dependencies": {
-    "browser-relay-client": "git+http://github.com/overelay/browser-relay-client",
+    "browser-relay-client": "git+http://github.com/overelay/browser-relay-client#v0.1.15",
     "browserify-middleware": "^4.1.0",
     "express": "^4.10.4",
     "node-uuid": "^1.4.2",
