@@ -91,7 +91,11 @@ export class Protocol {
     }
 
     writeRoomsList(rooms: RoomInfo[]): void {
-        this.callbacks.outputMessage(rooms.map((room) => { return room.name + " [" + room.id + "]"; }).join("\n"));
+        if (rooms.length == 0) {
+            this.callbacks.outputMessage("There are no rooms created yet")
+        } else {
+            this.callbacks.outputMessage(rooms.map((room) => { return room.name + " [" + room.id + "]"; }).join("\n"));
+        }
     }
 
     writeRoomInfo(room: RoomInfo): void {
@@ -115,6 +119,14 @@ export class Protocol {
 
     writeInvalidRoomName(name: string) {
         this.callbacks.outputMessage("No room with such name `" + name + "`");
+    }
+
+    writeNoActiveRoom() {
+        this.callbacks.outputMessage("Active room was not selected. Use `/goto` command.")
+    }
+
+    writeNameRequired() {
+        this.callbacks.outputMessage("Name parameter required for this command.")
     }
 }
 

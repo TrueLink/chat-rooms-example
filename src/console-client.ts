@@ -91,8 +91,14 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
     }
 
     onSay(replica: string): void {
-        var hub = this._hub;
         var activeRoom = this._getRoomById(this._activeRoom);
+
+        if (!activeRoom) {
+            this._console.writeNoActiveRoom();
+            return;
+        }
+
+        var hub = this._hub;
         activeRoom.posted(hub.guid, replica);
         var allUsersInRoomExceptMe = activeRoom.users.filter((user) => { return user != hub.guid; });
 
@@ -101,6 +107,11 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
 
     onEnter(name: string): void {
         var room = this._getRoomByName(name);
+        if (!room) {
+            this._console.writeInvalidRoomName(name);
+            return;
+        }
+
         var hub = this._hub;
 
         room.userEntered(hub.guid);
@@ -111,7 +122,9 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
         var room = this._getRoomByName(name);
         if (!room) {
             this._console.writeInvalidRoomName(name);
+            return;
         }
+
         var hub = this._hub;
 
         room.userLeft(hub.guid);
@@ -120,12 +133,21 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
 
     onGoto(name: string): void {
         var room = this._getRoomByName(name);
+        if (!room) {
+            this._console.writeInvalidRoomName(name);
+            return;
+        }
+
         this._activeRoom = room.id;
     }
 
     onCreate(name: string): void {
         var hub = this._hub;
-        if (!name) return;
+
+        if (!name) {
+            this._console.writeNameRequired();
+            return;
+        }
 
         var room = new roomModel.RoomModel({
             id: uuid.v4(),
@@ -150,6 +172,12 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
 
     onGetActiveRoom(): void {
         var room = this._getRoomById(this._activeRoom);
+
+        if (!room) {
+            this._console.writeNoActiveRoom();
+            return;
+        }
+
         this._console.writeRoomInfo({
             id: room.id,
             name: room.name
@@ -167,6 +195,12 @@ class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
 
     onGetUsersList(): void {
         var room = this._getRoomById(this._activeRoom);
+
+        if (!room) {
+            this._console.writeNoActiveRoom();
+            return;
+        }
+
         this._console.writeUsersList(room.users.map((id) => {
             this
             return {
