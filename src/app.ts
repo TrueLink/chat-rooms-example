@@ -180,7 +180,7 @@ class AppClass extends TypedReact.Component<AppProps, AppState> implements proto
         room.userLeft(userId);
     }
 
-    readPostReplice(roomId: string, userId: string, replica: string): void {
+    readPostReplica(roomId: string, userId: string, replica: string): void {
         var room = this._getRoomById(roomId);
         room.posted(userId, replica);
     }

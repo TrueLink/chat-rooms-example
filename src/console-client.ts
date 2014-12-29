@@ -1,123 +1,221 @@
 ﻿import readline = require('readline');
+import roomModel = require("./room-model");
+import uuid = require("node-uuid");
+import routing = require("browser-relay-client/lib/routing");
+import hub = require("browser-relay-client/lib/hub");
+import chatProto = require("./chat-protocol");
+import consoleProto = require("./console-protocol");
 
-export interface Callbacks {
-    consoleMessage(message: string): void;
-
-    onSay(replica: string): void;
-    onEnter(room: string): void;
-    onLeave(room: string): void;
-    onGoto(room: string): void;
-    onCreate(room: string): void;
-    onGetUserInfo(): void;
-    onSetUserInfo(name: string): void;
-    onGetActiveRoom(): void;
-    onGetUsersList(): void;
-}
-
-class ConsoleProtocol {
-    private callbacks: Callbacks;
-
-    constructor() {
-    }
-
-    public setReactions(callbacks: Callbacks) {
-        this.callbacks = callbacks;
-    }
-
-    readLine(line: string) {
-        var mo = line.match(/^\s*(\w+)\s*(.*)?$/);
-        var cmd = mo[1];
-        var params = mo[2];
-
-        switch (cmd) {
-            case "say":
-                this.callbacks.onSay(params);
-                break;
-            case "enter":
-                this.callbacks.onEnter(params);
-                break;
-            case "leave": 
-                this.callbacks.onLeave(params);
-                break;
-            case "goto":
-                this.callbacks.onGoto(params);
-                break;
-            case "create": break;
-                this.callbacks.onCreate(params);
-                break;
-            case "whoami":
-                this.callbacks.onGetUserInfo();
-                break;
-            case "iam":
-                this.callbacks.onSetUserInfo(params);
-                break;
-            case "whereami":
-                this.callbacks.onGetActiveRoom();
-                break;
-            case "whosthere":
-                this.callbacks.onGetUsersList();
-                break;
-            default: break;
-        }
-    }
-}
-
-class ConsoleClient {
-    private _protocol: ConsoleProtocol;
+class ConsoleClient implements consoleProto.Callbacks, chatProto.Callbacks {
+    private _console: consoleProto.Protocol;
+    private _contacts: string[];
     private _rli: readline.ReadLine;
+    private _rooms: roomModel.RoomModel[];
+    private _activeRoom: string;
+    private _username: string;
+    private _hub: hub.HubAPI;
+    private _protocol: chatProto.Protocol;
 
     constructor(options: {
-        protocol: ConsoleProtocol
+        console: consoleProto.Protocol;
+        hub: hub.HubAPI;
+        protocol: chatProto.Protocol;
     }) {
-        this._protocol.setReactions(this);
+        this._contacts = [];
         this._protocol = options.protocol;
+        this._protocol.setReactions(this);
+
+        this._console = options.console;
+        this._console.setReactions(this);
+
         var rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
             terminal: true
         });
         rl.setPrompt('--> ', 4);
-        rl.prompt();
+
         this._rli = rl;
 
         rl.on('line', (line: string) => {
-            this._protocol.readLine(line);
+            this._console.readLine(line);
             rl.prompt();
         });
 
         rl.on('close', function () {
             process.exit(0);
         });
+
+        this._rooms = [];
+        this._hub = options.hub;
+        this._hub.onMessage.on(this._readMessage, this);
+        this._hub.onRoutingChanged.on(this._routingChanged, this);
     }
 
-    consoleMessage(message: string): void {
+    private _readMessage(message: any): void {
+        this._protocol.readMessage(message);
+    }
+
+    private _getRoomById(id: string): roomModel.RoomModel {
+        for (var i = 0; i < this._rooms.length; i++) {
+            var room = this._rooms[i];
+            if (room.id == id) return room;
+        }
+        return null;
+    }
+
+    private _getRoomByName(name: string): roomModel.RoomModel {
+        for (var i = 0; i < this._rooms.length; i++) {
+            var room = this._rooms[i];
+            if (room.name == name) return room;
+        }
+        return null;
+    }
+
+    private _routingChanged(table: routing.RoutingTable): void {
+        var nodes = table.children;
+        var hub = this._hub;
+        var contacts: string[] = [];
+
+        for (var i = 0; i < nodes.length; i++) {
+            var guid = nodes[i];
+            if (guid == hub.guid) continue;
+            contacts.push(guid);
+        }
+
+        this._contacts = contacts;
+    }
+
+    outputMessage(message: string): void {
         console.log(message);
     }
 
     onSay(replica: string): void {
+        var hub = this._hub;
+        var activeRoom = this._getRoomById(this._activeRoom);
+        activeRoom.posted(hub.guid, replica);
+        var allUsersInRoomExceptMe = activeRoom.users.filter((user) => { return user != hub.guid; });
+
+        this._protocol.writePostReplica(allUsersInRoomExceptMe, activeRoom.id, hub.guid, replica);
     }
 
-    onEnter(room: string): void {
+    onEnter(name: string): void {
+        var room = this._getRoomByName(name);
+        var hub = this._hub;
+
+        room.userEntered(hub.guid);
+        this._protocol.writeEnterRoom(this._contacts, room.id, hub.guid);
     }
 
-    onLeave(room: string): void {
+    onLeave(name: string): void {
+        var room = this._getRoomByName(name);
+        if (!room) {
+            this._console.writeInvalidRoomName(name);
+        }
+        var hub = this._hub;
+
+        room.userLeft(hub.guid);
+        this._protocol.writeLeaveRoom(this._contacts, room.id, hub.guid);
     }
 
-    onGoto(room: string): void {
+    onGoto(name: string): void {
+        var room = this._getRoomByName(name);
+        this._activeRoom = room.id;
     }
 
-    onCreate(room: string): void {
+    onCreate(name: string): void {
+        var hub = this._hub;
+        if (!name) return;
+
+        var room = new roomModel.RoomModel({
+            id: uuid.v4(),
+            name: name
+        });
+        var rooms = this._rooms;
+        rooms.push(room);
+
+        this._protocol.writeCreateRoom(this._contacts, room.id, name);
     }
 
     onGetUserInfo(): void {
+        this._console.writeUserInfo({
+            id: this._hub.guid,
+            name: this._username
+        });
     }
 
     onSetUserInfo(name: string): void {
+        this._username = name;
     }
 
     onGetActiveRoom(): void {
+        var room = this._getRoomById(this._activeRoom);
+        this._console.writeRoomInfo({
+            id: room.id,
+            name: room.name
+        });
+    }
+
+    onGetListOfRooms(): void {
+        this._console.writeRoomsList(this._rooms.map((room) => {
+            return {
+                id: room.id,
+                name: room.name
+            };
+        }));
     }
 
     onGetUsersList(): void {
+        var room = this._getRoomById(this._activeRoom);
+        this._console.writeUsersList(room.users.map((id) => {
+            this
+            return {
+                id: id,
+                name: ""
+            };
+        }));
+    }
+
+    run(): void {
+        this._rli.prompt();
+    }
+
+    writeMessage(destinations: string[], message: any): void {
+        this._hub.sendAll(destinations, message);
+    }
+
+    readCreateRoom(id: string, name: string): void {
+        var room = new roomModel.RoomModel({
+            id: id,
+            name: name
+        });
+        this._rooms.push(room);
+    }
+
+    readEnterRoom(roomId: string, userId: string): void {
+        var room = this._getRoomById(roomId);
+        room.userEntered(userId);
+    }
+
+    readLeaveRoom(roomId: string, userId: string): void {
+        var room = this._getRoomById(roomId);
+        room.userLeft(userId);
+    }
+
+    readPostReplica(roomId: string, userId: string, replica: string): void {
+        var room = this._getRoomById(roomId);
+        room.posted(userId, replica);
     }
 }
+
+var guid = uuid.v4();
+var instance = hub.Hub.create(guid);
+var chatProtocol = new chatProto.Protocol();
+var client = new ConsoleClient({
+    console: new consoleProto.Protocol(),
+    hub: instance,
+    protocol: chatProtocol
+});
+
+instance.connect("ws://127.0.0.1:20500/");
+client.run();

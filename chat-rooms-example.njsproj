@@ -26,11 +26,14 @@
     <Content Include="README.md" />
     <Compile Include="gulpfile.js" />
     <TypeScriptCompile Include="src\app.ts" />
+    <TypeScriptCompile Include="src\chat-protocol.ts" />
+    <TypeScriptCompile Include="src\console-client.ts" />
     <TypeScriptCompile Include="src\ramp-connection.ts" />
     <TypeScriptCompile Include="src\room-model.ts" />
     <TypeScriptCompile Include="src\chat.ts" />
     <TypeScriptCompile Include="src\rooms-item.ts" />
     <TypeScriptCompile Include="src\server.ts" />
+    <TypeScriptCompile Include="src\console-protocol.ts" />
     <TypeScriptCompile Include="typings\tsd.d.ts" />
     <TypeScriptCompile Include="typings\node\node.d.ts" />
     <TypeScriptCompile Include="typings\node-uuid\node-uuid.d.ts" />

@@ -4,7 +4,7 @@
     readCreateRoom(id: string, name: string): void;
     readEnterRoom(roomId: string, userId: string): void;
     readLeaveRoom(roomId: string, userId: string): void;
-    readPostReplice(roomId: string, userId: string, replica: string): void;
+    readPostReplica(roomId: string, userId: string, replica: string): void;
 }
 
 export class Protocol {
@@ -39,7 +39,7 @@ export class Protocol {
                 var roomId: string = message.room;
                 var userId: string = message.user;
                 var replica: string = message.replica;
-                this.callbacks.readPostReplice(roomId, userId, replica);
+                this.callbacks.readPostReplica(roomId, userId, replica);
                 break;
         }
     }

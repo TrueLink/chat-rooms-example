@@ -34,3 +34,4 @@ bin/
 lib/*.map
 lib/*.js
 lib/*.d.ts
+.ntvs_analysis.dat.tmp
